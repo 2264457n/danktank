@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import time
+
 from tank_server import *
 import logging
 import argparse
@@ -26,10 +28,30 @@ logging.info("Creating tank with name '{}'".format(args.name))
 GameServer.sendMessage(ServerMessageTypes.CREATETANK, {'Name': args.name})
 
 
+def find_close_obj(type):
+    goal_obj = GameObject(X = 300, Y=300)
+    while True:
+        for i in range(4):
+            GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': (i*90)})
+            for i in range(5):
+                message_type, message = GameServer.readMessage()
+                print(message)
+                if message_type == ServerMessageTypes.OBJECTUPDATE and message.get("Type") == type:
+                    current_obj = GameObject(X=message.get("X"), Y=message.get("Y"))
+                    if my_tank.distance_to_object(current_obj)<my_tank.distance_to_object(goal_obj):
+                        goal_obj = current_obj
+                        print("found closer item", goal_obj)
+        if goal_obj.position[0] != 300:
+            break
+        return goal_obj
+
+
 def handle_object_update(msg):
     if message_type == ServerMessageTypes.OBJECTUPDATE:
         if args.name == msg.get("Name", "?"):
             my_tank.update(msg)
+            if my_tank.health <=2:
+                health_pickup = find_close_obj("HealthPickup")
         elif msg.get("Type", "") == "Tank":
             target = GameObject(X=msg.get("X"), Y=msg.get("Y"), Id=msg.get("Id"))
             print(my_tank.target_heading(target))

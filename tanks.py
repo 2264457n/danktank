@@ -43,6 +43,12 @@ class Tank(GameObject):
         self.health = kwargs.get("Health")
         self.ammo = kwargs.get("Ammo")
 
+    def update(self, message):
+        self.position = message["X"], message["Y"]
+        self.heading = message["Heading"]
+        self.health = message["Health"]
+        self.ammo = message["Ammo"]
+
 
 class Player(Tank):
     message_pipeline = None
@@ -51,7 +57,3 @@ class Player(Tank):
     def __init__(self, server, **kwargs):
         super().__init__()
         self.message_pipeline = server
-
-    def update(self, message):
-        self.position = message["X"], message["Y"]
-        self.heading = message["Heading"]
