@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import random
 import time
 from queue import Queue
 from tank_server import *
@@ -32,6 +33,7 @@ GameServer.sendMessage(ServerMessageTypes.CREATETANK, {'Name': args.name})
 def find_close_obj(type):
     goal_obj = GameObject(X=1000, Y=1000)
     while True:
+        time.sleep(0.05)
         GameServer.sendMessage(ServerMessageTypes.TOGGLETURRETLEFT)
         time.sleep(3)
         for i in range(10):
@@ -140,6 +142,7 @@ handler_map = {ServerMessageTypes.OBJECTUPDATE: handle_object_update,
                }
 job_queue = Queue()
 while True:
+    time.sleep(0.05)
     message_type, message = GameServer.readMessage()
     try:
         handler_map.get(message_type)(message)
