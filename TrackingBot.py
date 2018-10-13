@@ -122,12 +122,14 @@ def snake():
     while move is True:
          GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': random.randint(0,360)})
          GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE,{'Amount': random.randint(4,20)})
-         continue
          if my_tank.position[0] > 70 or my_tank.position[0] < -70:
             GameServer.sendMessage(ServerMessageTypes.STOPALL)
             GameServer.sendMessage(ServerMessageTypes.TOGGLEREVERSE)
             if 60 < my_tank.position[0] < 70:
                 GameServer.sendMessage(ServerMessageTypes.MOVEBACKWARSDISTANCE, {'Amount':10})
+                GameServer.sendMessage(ServerMessageTypes.STOPALL)
+                move = False
+
 
 
 
