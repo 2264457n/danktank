@@ -37,7 +37,7 @@ def find_close_obj(type):
                 message_type, message = GameServer.readMessage()
                 print(message)
                 if message_type == ServerMessageTypes.OBJECTUPDATE and message.get("Type") == type:
-                    current_obj = GameObject(X=message.get('X'), Y=message.get('Y'))
+                    current_obj = GameObject(X=message.get("X"), Y=message.get("Y"))
                     if my_tank.distance_to_object(current_obj)<my_tank.distance_to_object(goal_obj):
                         goal_obj = current_obj
                         print("found closer item", goal_obj.position[0])
@@ -47,28 +47,25 @@ def find_close_obj(type):
 
 
 def handle_object_update(msg):
-    if message_type == ServerMessageTypes.OBJECTUPDATE:
-        if args.name == msg.get("Name", "?"):
-            my_tank.update(msg)
-            if my_tank.health <= 2:
-                health_pickup = find_close_obj("HealthPickup")
-                print(health_pickup.position)
-                GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {"Amount": my_tank.target_heading(health_pickup)})
-                time.sleep(3)
-                GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {"Amount": my_tank.distance_to_object(health_pickup)/1.5})
-        elif msg.get("Type", "") == "Tank":
-            target = GameObject(X=msg.get("X"), Y=msg.get("Y"), Id=msg.get("Id"))
-            print(my_tank.target_heading(target))
-            GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {"Amount": my_tank.target_heading(target)})
-            GameServer.sendMessage(ServerMessageTypes.FIRE)
-            print("FIRE!")
-    else:
-        print(message_type)
+    if args.name == msg.get("Name", "?"):
+        my_tank.update(msg)
+        if my_tank.health <=2:
+            health_pickup = find_close_obj("HealthPickup")
+            print(health_pickup.position)
+            GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {"Amount": my_tank.target_heading(health_pickup)})
+            time.sleep(3)
+            GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE,
+                                   {"Amount": my_tank.distance_to_object(health_pickup) / 1.5})
+    elif msg.get("Type", "") == "Tank":
+        target = GameObject(X=msg.get("X"), Y=msg.get("Y"), Id=msg.get("Id"))
+        print(my_tank.target_heading(target))
+        GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {"Amount": my_tank.target_heading(target)})
+        GameServer.sendMessage(ServerMessageTypes.FIRE)
+        print("FIRE!")
 
 
 def handle_kill(msg=""):
     bank()
-
 
 
 def bank():
@@ -86,16 +83,18 @@ def bank():
         print("We go to the blue goal")
         turn_move(my_tank.target_heading(blue_goal), blue_goal_dist)
 
+
 def turn_move(heading, distance):
-    print("Heading", heading )
-    GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': heading})
-    GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': heading})
-    GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': distance})
+    print("Heading", heading)
+    job_queue.put((ServerMessageTypes.TURNTOHEADING, {'Amount': heading}))
+    job_queue.put((ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': heading}))
+    job_queue.put((ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': distance}))
+
 
 def entered_goal(msg=""):
     print("a GOAAAAAL!!!!")
-    GameServer.sendMessage(ServerMessageTypes.TOGGLEREVERSE)
-    turn_move(180, 30)
+    job_queue.put((ServerMessageTypes.TOGGLEREVERSE, None))
+    job_queue.put((turn_move,(180, 30)))
     pass
 
 
@@ -125,10 +124,14 @@ while True:
     if job_queue.empty():
         # Decide-y code
         if my_tank.health < 2:
-
-        job_queue.push()
+            job_queue.put((heal, 0))
     else:
-        callback, state_helper = job_queue.get()
-        callback(message, state_helper)
+        job = job_queue.get()
+        print(job)
+        part_a, part_b = job[0], job[1]
+        if isinstance(part_a, int):  # is a message type
+            GameServer.sendMessage(part_a,part_b)
+        else:  # Is a callback
+            part_a(message, part_b)
     # callback is responsible for adding any jobs it wants to the queue
 
