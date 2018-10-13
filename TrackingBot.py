@@ -63,6 +63,35 @@ def handle_object_update(msg):
 
 
 def handle_kill(msg=""):
+    bank()
+
+
+
+def bank():
+    blue_goal = GameObject(X=0, Y=120)
+    red_goal = GameObject(X=0, Y=-120)
+    blue_goal_dist = my_tank.distance_to_object(blue_goal)
+    red_goal_dist = my_tank.distance_to_object(red_goal)
+    print("Blue goal dist", blue_goal_dist)
+    print("Red goal dist", red_goal_dist)
+    if blue_goal_dist > red_goal_dist:
+        print("We go to the red goal")
+        turn_move(my_tank.target_heading(red_goal), red_goal_dist)
+
+    else:
+        print("We go to the blue goal")
+        turn_move(my_tank.target_heading(blue_goal), blue_goal_dist)
+
+def turn_move(heading, distance):
+    print("Heading", heading )
+    GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': heading})
+    GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': heading})
+    GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': distance})
+
+def entered_goal(msg=""):
+    print("a GOAAAAAL!!!!")
+    GameServer.sendMessage(ServerMessageTypes.TOGGLEREVERSE)
+    turn_move(180, 30)
     pass
 
 
@@ -78,6 +107,7 @@ def heal(msg, state):
 my_tank = Player(server=GameServer)
 handler_map = {ServerMessageTypes.OBJECTUPDATE: handle_object_update,
                ServerMessageTypes.KILL: handle_kill,
+               ServerMessageTypes.ENTEREDGOAL: entered_goal,
                }
 job_queue = Queue()
 while True:
