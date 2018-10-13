@@ -4,6 +4,7 @@ import time
 from tank_server import *
 import logging
 import argparse
+import random
 from tanks import GameObject, Player
 
 # Parse command line args
@@ -98,6 +99,21 @@ def entered_goal(msg=""):
     turn_move(180, 30)
     pass
 
+def snake():
+    move = True
+    while move is True:
+         GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': random.randint(0,360)})
+         GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE,{'Amount': random.randint(4,20)})
+         continue
+         if my_tank.position[0] > 70 or my_tank.position[0] < -70:
+            GameServer.sendMessage(ServerMessageTypes.STOPALL)
+            GameServer.sendMessage(ServerMessageTypes.TOGGLEREVERSE)
+            if 60 < my_tank.position[0] < 70:
+                GameServer.sendMessage(ServerMessageTypes.MOVEBACKWARSDISTANCE, {'Amount':10})
+
+
+
+
 
 # Main loop - read game messages and point at other tanks
 # Event loop takes over the minimum time to complete, so no need to rate limit
@@ -107,6 +123,7 @@ handler_map = {ServerMessageTypes.OBJECTUPDATE: handle_object_update,
                ServerMessageTypes.ENTEREDGOAL: entered_goal,
                }
 while True:
+
     message_type, message = GameServer.readMessage()
     try:
         handler_map.get(message_type)(message)
