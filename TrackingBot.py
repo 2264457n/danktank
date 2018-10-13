@@ -33,6 +33,7 @@ GameServer.sendMessage(ServerMessageTypes.CREATETANK, {'Name': args.name})
 def find_close_obj(type):
     goal_obj = GameObject(X=1000, Y=1000)
     while True:
+        time.sleep(0.05)
         GameServer.sendMessage(ServerMessageTypes.TOGGLETURRETLEFT)
         time.sleep(3)
         for i in range(10):
@@ -59,7 +60,7 @@ def handle_object_update(msg):
                 print(health_pickup.position)
                 GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {"Amount": my_tank.target_heading(health_pickup)})
                 time.sleep(2)
-                GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {"Amount": my_tank.distance_to_object(health_pickup)/1.9})
+                GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {"Amount": my_tank.distance_to_object(health_pickup)})
             if my_tank.ammo == 0:
                 GameServer.sendMessage(ServerMessageTypes.STOPALL)
                 ammo_pickup = find_close_obj("AmmoPickup")
