@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import time
-
+from queue import Queue
 from tank_server import *
 import logging
 import argparse
@@ -66,15 +66,35 @@ def handle_kill(msg=""):
     pass
 
 
+def heal(msg, state):
+    if state == 1:
+        pass
+    elif state == 2:
+        pass
+
+
 # Main loop - read game messages and point at other tanks
 # Event loop takes over the minimum time to complete, so no need to rate limit
 my_tank = Player(server=GameServer)
 handler_map = {ServerMessageTypes.OBJECTUPDATE: handle_object_update,
                ServerMessageTypes.KILL: handle_kill,
                }
+job_queue = Queue()
 while True:
     message_type, message = GameServer.readMessage()
     try:
         handler_map.get(message_type)(message)
     except TypeError:  # I don't have a function to deal with these events yet, so errors happen
         print(ServerMessageTypes().to_string(message_type))
+
+    # If there are no items in buffer, decide what to do next, else call buffer
+    if job_queue.empty():
+        # Decide-y code
+        if my_tank.health < 2:
+
+        job_queue.push()
+    else:
+        callback, state_helper = job_queue.get()
+        callback(message, state_helper)
+    # callback is responsible for adding any jobs it wants to the queue
+
