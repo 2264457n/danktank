@@ -135,7 +135,7 @@ handler_map = {ServerMessageTypes.OBJECTUPDATE: handle_object_update,
                ServerMessageTypes.ENTEREDGOAL: entered_goal,
                }
 while True:
-
+    time.sleep(0.05)
     message_type, message = GameServer.readMessage()
     try:
         handler_map.get(message_type)(message)
