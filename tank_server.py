@@ -88,6 +88,7 @@ class ServerComms(object):
     def __init__(self, hostname, port):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.connect((hostname, port))
+        self.server_socket.setblocking(True)
 
     def readMessage(self):
         """

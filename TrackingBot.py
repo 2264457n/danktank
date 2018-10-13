@@ -1,7 +1,5 @@
 #!/usr/bin/python
-import random
 import time
-from queue import Queue
 from tank_server import *
 import logging
 import argparse
@@ -30,40 +28,51 @@ logging.info("Creating tank with name '{}'".format(args.name))
 GameServer.sendMessage(ServerMessageTypes.CREATETANK, {'Name': args.name})
 
 
-def find_close_obj(type):
+def find_close_obj(obj_type):  # Only handles turret movement, not tracks
     goal_obj = GameObject(X=1000, Y=1000)
     while True:
         time.sleep(0.05)
-        GameServer.sendMessage(ServerMessageTypes.TOGGLETURRETLEFT)
-        time.sleep(3)
-        for i in range(10):
+        ServerComms.sendMessage(message_type=ServerMessageTypes.TOGGLETURRETLEFT)
+        time.sleep(3)  # Scan for 3 seconds
+        seen_items = []
+        while True:
             message_type, message = GameServer.readMessage()
-            print(message)
-            if message_type == ServerMessageTypes.OBJECTUPDATE and message.get("Type") == type:
-                current_obj = GameObject(X=message.get('X'), Y=message.get('Y'))
-                if my_tank.distance_to_object(current_obj)<my_tank.distance_to_object(goal_obj):
+            if message_type == ServerMessageTypes.OBJECTUPDATE and message.get("Type") == obj_type:
+                current_obj = GameObject(X=message.get('X'), Y=message.get('Y'), Id=message.get("Id"))
+                if current_obj not in seen_items:
+                    seen_items.append(current_obj)
+                else:
+                    break
+
+                if my_tank.distance_to_object(current_obj) < my_tank.distance_to_object(goal_obj):
                     goal_obj = current_obj
                     print("found closer item", goal_obj.position[0])
-        GameServer.sendMessage(ServerMessageTypes.STOPTURRET)
+            elif message_type != ServerMessageTypes.OBJECTUPDATE:
+                # Redirect caught message
+                print("redirecting ", message_type)
+                handle_incoming_message(message_type, message)
+        GameServer.sendMessage(message_type=ServerMessageTypes.STOPTURRET)  # Stop scanning for items
         if goal_obj.position[0] != 1000:
             break
     return goal_obj
 
 
-def handle_object_update(msg):
+def handle_object_update(msg):  # Main tick decider
     if args.name == msg.get("Name", "?"):
         my_tank.update(msg)
+        GameServer.sendMessage(ServerMessageTypes.STOPMOVE)
         if my_tank.health <= 2:
-            GameServer.sendMessage(ServerMessageTypes.STOPALL)
-            health_pickup = find_close_obj("HealthPickup")
-            print(health_pickup.position)
-            GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {"Amount": my_tank.target_heading(health_pickup)})
+            health_pickup = find_close_obj("HealthPickup")  # reads a lot more messages
+            print("health location", health_pickup.position)
+            GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING,
+                                   {"Amount": my_tank.target_heading(health_pickup)})
             time.sleep(2)
-            GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {"Amount": my_tank.distance_to_object(health_pickup)/1.9})
+            GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE,
+                                   {"Amount": my_tank.distance_to_object(health_pickup)/1.9})
         if my_tank.ammo == 0:
             GameServer.sendMessage(ServerMessageTypes.STOPALL)
             ammo_pickup = find_close_obj("AmmoPickup")
-            print(ammo_pickup.position)
+            print("ammo location", ammo_pickup.position)
             GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING,
                                    {"Amount": my_tank.target_heading(ammo_pickup)})
             time.sleep(2)
@@ -71,7 +80,7 @@ def handle_object_update(msg):
                                    {"Amount": my_tank.distance_to_object(ammo_pickup) / 1.9})
     elif msg.get("Type", "") == "Tank":
         target = GameObject(X=msg.get("X"), Y=msg.get("Y"), Id=msg.get("Id"))
-        print(my_tank.target_heading(target))
+        print("target heading", my_tank.target_heading(target))
         GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {"Amount": my_tank.target_heading(target)})
         GameServer.sendMessage(ServerMessageTypes.FIRE)
         print("FIRE!")
@@ -97,32 +106,28 @@ def bank():
         turn_move(my_tank.target_heading(blue_goal), blue_goal_dist)
 
 
-def turn_move(heading, distance):
+def turn_move(m_type, msg, heading, distance):
     print("Heading", heading)
-    job_queue.put((ServerMessageTypes.TURNTOHEADING, {'Amount': heading}))
-    job_queue.put((ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': heading}))
-    job_queue.put((ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': distance}))
+    ServerComms.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': heading})
+    ServerComms.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': heading})
+    ServerComms.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': distance})
 
 
 def entered_goal(msg=""):
     print("a GOAAAAAL!!!!")
-    job_queue.put((ServerMessageTypes.TOGGLEREVERSE, None))
-    job_queue.put((turn_move,(180, 30)))
-    pass
+    ServerComms.sendMessage(message_type=ServerMessageTypes.STOPMOVE)
+    ServerComms.sendMessage(message_type=ServerMessageTypes.TOGGLEREVERSE)
+    turn_move(180, 30)
 
-
-def heal(msg, state):
-    if state == 1:
-        pass
-    elif state == 2:
-        pass
 
 def snake():
     move = True
     while move is True:
-         GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': random.randint(0,360)})
-         GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE,{'Amount': random.randint(4,20)})
-         if my_tank.position[0] > 70 or my_tank.position[0] < -70:
+        msg_type, msg = GameServer.readMessage()
+        handle_incoming_message(msg_type, msg)
+        GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': random.randint(0,360)})
+        GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': random.randint(4,20)})
+        if my_tank.position[0] > 70 or my_tank.position[0] < -70:
             GameServer.sendMessage(ServerMessageTypes.STOPALL)
             GameServer.sendMessage(ServerMessageTypes.TOGGLEREVERSE)
             if 60 < my_tank.position[0] < 70:
@@ -131,8 +136,11 @@ def snake():
                 move = False
 
 
-
-
+def handle_incoming_message(m_type, msg):
+    try:
+        handler_map.get(m_type)(msg)
+    except TypeError:  # I don't have a function to deal with these events yet, so errors happen
+        print(ServerMessageTypes().to_string(m_type))
 
 
 # Main loop - read game messages and point at other tanks
@@ -142,27 +150,9 @@ handler_map = {ServerMessageTypes.OBJECTUPDATE: handle_object_update,
                ServerMessageTypes.KILL: handle_kill,
                ServerMessageTypes.ENTEREDGOAL: entered_goal,
                }
-job_queue = Queue()
 while True:
     time.sleep(0.05)
-    message_type, message = GameServer.readMessage()
-    try:
-        handler_map.get(message_type)(message)
-    except TypeError:  # I don't have a function to deal with these events yet, so errors happen
-        print(ServerMessageTypes().to_string(message_type))
-
+    message_type, message = GameServer.readMessage()  # Main tick read
+    handle_incoming_message(message_type, message)
     # If there are no items in buffer, decide what to do next, else call buffer
-    if job_queue.empty():
-        # Decide-y code
-        if my_tank.health < 2:
-            job_queue.put((heal, 0))
-    else:
-        job = job_queue.get()
-        print(job)
-        part_a, part_b = job[0], job[1]
-        if isinstance(part_a, int):  # is a message type
-            GameServer.sendMessage(part_a,part_b)
-        else:  # Is a callback
-            part_a(message, part_b)
-    # callback is responsible for adding any jobs it wants to the queue
-
+    snake()

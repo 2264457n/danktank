@@ -4,13 +4,12 @@ import math
 class GameObject(object):
     position = 0, 0
     id = 1
+    heading = 0
 
     def distance_to_object(self, other) -> float:
         return math.sqrt(math.pow((self.position[0]-other.position[0]), 2) + math.pow((self.position[1]-other.position[1]), 2))
 
     def target_heading(self, other) -> float:
-        print(other.position[1])
-        print(self.position[1])
         heading = math.atan2(other.position[1]-self.position[1],
                              other.position[0]-self.position[0]) *\
                   (180/math.pi)  # Radians to degrees
