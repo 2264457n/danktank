@@ -4,6 +4,7 @@ import time
 from tank_server import *
 import logging
 import argparse
+import random
 from tanks import GameObject, Player
 
 # Parse command line args
@@ -29,29 +30,44 @@ GameServer.sendMessage(ServerMessageTypes.CREATETANK, {'Name': args.name})
 
 
 def find_close_obj(type):
-    goal_obj = GameObject(X = 300, Y=300)
+    goal_obj = GameObject(X=1000, Y=1000)
     while True:
-        for i in range(4):
-            GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': (i*90)})
-            for i in range(5):
-                message_type, message = GameServer.readMessage()
-                print(message)
-                if message_type == ServerMessageTypes.OBJECTUPDATE and message.get("Type") == type:
-                    current_obj = GameObject(X=message.get("X"), Y=message.get("Y"))
-                    if my_tank.distance_to_object(current_obj)<my_tank.distance_to_object(goal_obj):
-                        goal_obj = current_obj
-                        print("found closer item", goal_obj)
-        if goal_obj.position[0] != 300:
+        GameServer.sendMessage(ServerMessageTypes.TOGGLETURRETLEFT)
+        time.sleep(3)
+        for i in range(10):
+            message_type, message = GameServer.readMessage()
+            print(message)
+            if message_type == ServerMessageTypes.OBJECTUPDATE and message.get("Type") == type:
+                current_obj = GameObject(X=message.get('X'), Y=message.get('Y'))
+                if my_tank.distance_to_object(current_obj)<my_tank.distance_to_object(goal_obj):
+                    goal_obj = current_obj
+                    print("found closer item", goal_obj.position[0])
+        GameServer.sendMessage(ServerMessageTypes.STOPTURRET)
+        if goal_obj.position[0] != 1000:
             break
-        return goal_obj
+    return goal_obj
 
 
 def handle_object_update(msg):
     if message_type == ServerMessageTypes.OBJECTUPDATE:
         if args.name == msg.get("Name", "?"):
             my_tank.update(msg)
-            if my_tank.health <=2:
+            if my_tank.health <= 2:
+                GameServer.sendMessage(ServerMessageTypes.STOPALL)
                 health_pickup = find_close_obj("HealthPickup")
+                print(health_pickup.position)
+                GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {"Amount": my_tank.target_heading(health_pickup)})
+                time.sleep(2)
+                GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {"Amount": my_tank.distance_to_object(health_pickup)/1.9})
+            if my_tank.ammo == 0:
+                GameServer.sendMessage(ServerMessageTypes.STOPALL)
+                ammo_pickup = find_close_obj("AmmoPickup")
+                print(ammo_pickup.position)
+                GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING,
+                                       {"Amount": my_tank.target_heading(ammo_pickup)})
+                time.sleep(2)
+                GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE,
+                                       {"Amount": my_tank.distance_to_object(ammo_pickup) / 1.9})
         elif msg.get("Type", "") == "Tank":
             target = GameObject(X=msg.get("X"), Y=msg.get("Y"), Id=msg.get("Id"))
             print(my_tank.target_heading(target))
