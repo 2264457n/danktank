@@ -40,8 +40,6 @@ def find_close_obj(type):
     goal_obj = GameObject(X=1000, Y=1000)
     while True:
         GameServer.sendMessage(ServerMessageTypes.TOGGLETURRETLEFT)
-        if(message_type == ServerMessageTypes.KILL):
-            bank()
         for i in range(10):
             message_type, message = GameServer.readMessage()
             print(message)
@@ -61,8 +59,6 @@ def handle_object_update(msg):
         if args.name == msg.get("Name", "?"):
             my_tank.update(msg)
             GameServer.sendMessage(ServerMessageTypes.STOPTURN)
-            if (message_type == ServerMessageTypes.KILL):
-                bank()
 
             if my_tank.health <= 2:
                 GameServer.sendMessage(ServerMessageTypes.STOPALL)
@@ -92,7 +88,6 @@ def handle_object_update(msg):
 
 
 def handle_kill(msg=""):
-    print("We killed ")
     bank()
 
 
@@ -119,15 +114,12 @@ def bank():
     print("Red goal dist", red_goal_dist)
     if blue_goal_dist > red_goal_dist:
         print("We go to the red goal")
-        GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING,{'Amount': my_tank.target_heading(red_goal)})
-        GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': my_tank.distance_to_object(red_goal_dist)})
-
-
+        turn_move(my_tank.target_heading(red_goal), red_goal_dist)
+        go_to(0,0)
 
     else:
         print("We go to the blue goal")
-        GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING,{'Amount': my_tank.target_heading(blue_goal)})
-        GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': my_tank.distance_to_object(blue_goal_dist)})
+        turn_move(my_tank.target_heading(blue_goal), blue_goal_dist)
         go_to(0,0)
 
 def turn_move(heading, distance):
@@ -154,10 +146,10 @@ def move(msg=""):
 
     return
 
-# def snitch_app(msg=""):
-#     if message.get('Name') == args.name:
-#         bank()
-#     return
+def snitch_app(msg=""):
+    if message.get('Name') == args.name:
+        bank()
+    return
 
 def snitch_pickup(msg=""):
     if message_type == ServerMessageTypes.OBJECTUPDATE:
@@ -174,12 +166,11 @@ handler_map = {ServerMessageTypes.OBJECTUPDATE: handle_object_update,
                ServerMessageTypes.KILL: handle_kill,
                ServerMessageTypes.ENTEREDGOAL: entered_goal,
                ServerMessageTypes.HITDETECTED: need,
-               # ServerMessageTypes.GAMETIMEUPDATE: move,
-               # ServerMessageTypes.SNITCHAPPEARED: snitch_app,
+               ServerMessageTypes.GAMETIMEUPDATE: move,
+               ServerMessageTypes.SNITCHAPPEARED: snitch_app,
                ServerMessageTypes.SNITCHPICKUP: snitch_pickup,
                }
 while True:
-    time.sleep(0.02)
     message_type, message = GameServer.readMessage()
     try:
         handler_map.get(message_type)(message)
