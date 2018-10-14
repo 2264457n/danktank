@@ -43,8 +43,29 @@ def check_state():
     if my_tank.health <= 2:
     #Execute code to go to last seen health from movement
         print("Low health!")
+        if last_seen_health == None:
+            snake()
     if my_tank.ammo == 0:
     #Execute code to go to last seen ammo from movement
         print("No ammo!")
+        if last_seen_health == None:
+            snake()
+
+def snake():
+    GameServer.sendMessage(ServerMessageTypes.TOGGLEFORWARD)
+    GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': random.randint(0,360)})
+    while True:
+        msg_type, msg = GameServer.readMessage()  # Read messages until my_tank can be updated
+        try:
+            if msg_type == ServerMessageTypes.OBJECTUPDATE and msg.get("Type") == "HealthPickup":
+                last_seen_health = GameObject(X=msg.get("X"), Y=msg.get("Y"), Id=msg.get("Id"))
+            if msg_type == ServerMessageTypes.OBJECTUPDATE and msg.get("Type") == "AmmoPickup":
+                last_seen_ammo = GameObject(X=msg.get("X"), Y=msg.get("Y"), Id=msg.get("Id"))
+            if last_seen_health != None and last_seen_ammo != None:
+                break
+        except:
+            continue
+    time.sleep(4)
+
 
 
