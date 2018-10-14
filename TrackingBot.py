@@ -40,11 +40,12 @@ def find_close_obj(type):
     goal_obj = GameObject(X=1000, Y=1000)
     while True:
         GameServer.sendMessage(ServerMessageTypes.TOGGLETURRETLEFT)
-        if(message_type == ServerMessageTypes.KILL):
-            bank()
+
         for i in range(10):
             message_type, message = GameServer.readMessage()
             print(message)
+            if (message_type == ServerMessageTypes.KILL):
+                bank()
             if message_type == ServerMessageTypes.OBJECTUPDATE and message.get("Type") == type:
                 current_obj = GameObject(X=message.get('X'), Y=message.get('Y'))
                 if my_tank.distance_to_object(current_obj)<my_tank.distance_to_object(goal_obj):
@@ -120,14 +121,16 @@ def bank():
     if blue_goal_dist > red_goal_dist:
         print("We go to the red goal")
         GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING,{'Amount': my_tank.target_heading(red_goal)})
-        GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': my_tank.distance_to_object(red_goal_dist)})
+        GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': my_tank.target_heading(red_goal)})
+        GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': my_tank.distance_to_object(red_goal)})
 
 
 
     else:
         print("We go to the blue goal")
         GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING,{'Amount': my_tank.target_heading(blue_goal)})
-        GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': my_tank.distance_to_object(blue_goal_dist)})
+        GameServer.sendMessage(ServerMessageTypes.TURNTURRETTOHEADING, {'Amount': my_tank.target_heading(red_goal)})
+        GameServer.sendMessage(ServerMessageTypes.MOVEFORWARDDISTANCE, {'Amount': my_tank.distance_to_object(blue_goal)})
         go_to(0,0)
 
 def turn_move(heading, distance):
