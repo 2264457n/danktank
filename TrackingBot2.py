@@ -31,8 +31,11 @@ my_tank = Player(server=GameServer)
 
 
 def check_state(last_seen_health, last_seen_ammo):
+    for i in range (50):
+        msg_type, msg = GameServer.readMessage()  # Read messages until my_tank can be updated
     while True:
         msg_type, msg = GameServer.readMessage()#Read messages until my_tank can be updated
+        logging.info(msg)
         try:
             if args.name == msg.get("Name", "?"):
                 my_tank.update(msg)
@@ -47,6 +50,7 @@ def check_state(last_seen_health, last_seen_ammo):
             snake()
         else:
             GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {"Amount": my_tank.target_heading(last_seen_health)})
+            time.sleep(2)
             GameServer.sendMessage(ServerMessageTypes.TOGGLEFORWARD)
             time.sleep(5)
     elif my_tank.ammo == 0:
@@ -55,9 +59,11 @@ def check_state(last_seen_health, last_seen_ammo):
         if last_seen_health == None:
             snake()
         else:
-            GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {"Amount": my_tank.target_heading(last_seen_ammo)})
-
+            GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING,
+                                   {"Amount": my_tank.target_heading(last_seen_health)})
+            time.sleep(2)
             GameServer.sendMessage(ServerMessageTypes.TOGGLEFORWARD)
+            time.sleep(5)
     else:
         snake()
 
@@ -66,6 +72,7 @@ def snake():
     last_seen_health = None
     GameServer.sendMessage(ServerMessageTypes.TOGGLEFORWARD)
     GameServer.sendMessage(ServerMessageTypes.TURNTOHEADING, {'Amount': random.randint(0,360)})
+    GameServer.sendMessage(ServerMessageTypes.TOGGLETURRETLEFT)
     while True:
         msg_type, msg = GameServer.readMessage()  # Read messages until my_tank can be updated
         try:
